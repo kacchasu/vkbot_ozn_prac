@@ -1,6 +1,7 @@
 import requests
 import bs4 as bs
 import vk_api
+from vk_api import VkUpload
 from vk_api.keyboard import VkKeyboard, VkKeyboardColor
 from vk_api.utils import get_random_id
 import pandas as pd
@@ -9,8 +10,10 @@ import re
 import datetime
 from vk_api.longpoll import VkLongPoll, VkEventType
 from Schedule import Schedule
+from WeatherProvider import WeatherProvider, WeatherObject
 import shelve
 
+VK_API_TOKEN = '549032f8f34c3497616a86b50173efb07243d0910e25de0f5ae1212072292f46a76851ba7122662ffdd78'
 
 class VkBot:
     def __init__(self, user_id):
@@ -461,7 +464,36 @@ class VkBot:
 
         # get weather
         elif message.upper() == "ПОГОДА":
-            TBD = True
+            #TODO: weather
+            self.set_keyboard_weather()
+            weatherProvider = WeatherProvider()
+            upload = VkUpload(vk_session)
+            attachments = list()
+
+            longp = VkLongPoll(vk_session)
+
+            for event_c in longpoll.listen():
+                if event_c.type == VkEventType.MESSAGE_NEW:
+                    if event_c.to_me:
+                        message = ''
+                        if event_c.text == "сейчас":
+                            weatherObject = weatherProvider.get_current_weather()
+                            image = open("icons/" + weatherObject.icon + ".png")
+                            photo = upload.photo_messages(photos = "icons/" + weatherObject.icon + ".png")[0]
+                            attachments.append("photo{}_{}".format(photo["owner_id"], photo["id"]))
+
+                            vk.messages.send(
+                                user_id=event.user_id,
+                                attachment=','.join(attachments),
+                                random_id=get_random_id(),
+                                message=f"{weatherObject.description}, температура: {weatherObject.min_temp}-{weatherObject.max_temp}℃\n\
+                                            Давление: {weatherObject.pressure} мм рт. ст., влажность: {weatherObject.humidity}%\n\
+                                            Ветер: {weatherObject.wind_type}, {weatherObject.wind_speed} м/с, {weatherObject.direction}"
+                            )
+                            break
+
+
+
 
         # get teacher's schedule
         elif re.fullmatch("НАЙТИ " + r".+", message.upper()):
@@ -728,16 +760,16 @@ f = open("log.txt", 'w')
 f.close()
 f = shelve.open("groups.txt", 'c')
 f.close()
-book1 = openpyxl.load_workbook("course1.xlsx")  # для первого запуска убрать
-book2 = openpyxl.load_workbook("course2.xlsx")  # для первого запуска убрать
-book3 = openpyxl.load_workbook("course3.xlsx")  # для первого запуска убрать
-course1 = book1.active  # для первого запуска course1 = None
-course2 = book2.active  # для первого запуска course2 = None
-course3 = book3.active  # для первого запуска course3 = None
+#book1 = openpyxl.load_workbook("course1.xlsx")  # для первого запуска убрать
+#book2 = openpyxl.load_workbook("course2.xlsx")  # для первого запуска убрать
+#book3 = openpyxl.load_workbook("course3.xlsx")  # для первого запуска убрать
+course1 = None  # для первого запуска course1 = None
+course2 = None  # для первого запуска course2 = None
+course3 = None  # для первого запуска course3 = None
 get_schedule_files()
 
 # Авторизуемся как сообщество
-vk_session = vk_api.VkApi(token='549032f8f34c3497616a86b50173efb07243d0910e25de0f5ae1212072292f46a76851ba7122662ffdd78')
+vk_session = vk_api.VkApi(token=VK_API_TOKEN)
 
 vk = vk_session.get_api()
 # Работа с сообщениями
