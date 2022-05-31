@@ -29,6 +29,17 @@ class WeatherObject:
     wind_speed = None
     direction = None
 
+    @staticmethod
+    def logging(key, comm):
+        f1 = open("log.txt", "a")
+        t1 = datetime.now()
+        f1.write(key + " --- ")
+        f1.write(t1.strftime("%d/%m/%Y %H:%M") + " --- ")
+        f1.write("corona class: " + comm + '\n')
+
+    def __init__(self):
+        self.logging("CRE", "weather object: created")
+
     def set_temp_range(self, min_temp, max_temp):
         self.min_temp = round(min_temp)
         self.max_temp = round(max_temp)
@@ -140,6 +151,14 @@ class WeatherObject:
 
 class WeatherProvider:
 
+    @staticmethod
+    def logging(key, comm):
+        f1 = open("log.txt", "a")
+        t1 = datetime.now()
+        f1.write(key + " --- ")
+        f1.write(t1.strftime("%d/%m/%Y %H:%M") + " --- ")
+        f1.write("corona class: " + comm + '\n')
+
     def get_current_weather(self):
         response = urllib.request.urlopen(
             f"http://api.openweathermap.org/data/2.5/weather?q=moscow&appid={WEATHER_API_KEY}&units=metric").read()
@@ -158,6 +177,8 @@ class WeatherProvider:
         result.set_pressure(json_main.get("pressure"))
         result.set_temp_range(json_main.get("temp_min"), json_main.get("temp_max"))
 
+        self.logging("GET", "weather provider: got current weather")
+
         return result
 
     def get_weather_object(self, json_response):
@@ -175,6 +196,8 @@ class WeatherProvider:
         result.set_humidity(json_main.get("humidity"))
         result.set_pressure(json_main.get("pressure"))
         result.set_temp_range(json_main.get("temp_min"), json_main.get("temp_max"))
+
+        self.logging("GET", "weather provider: got weather object from json response")
 
         return result
 
@@ -204,6 +227,8 @@ class WeatherProvider:
 
         for key in result.keys():
             result[key] = self.get_weather_object(result[key])
+
+        self.logging("GET", "weather provider: got today weather")
 
         return result
 
@@ -236,6 +261,8 @@ class WeatherProvider:
         for key in result.keys():
             result[key] = self.get_weather_object(result[key])
 
+        self.logging("GET", "weather provider: got tomorrow weather")
+
         return result
 
     def get_all_period_weather(self):
@@ -262,6 +289,8 @@ class WeatherProvider:
         for date_key in result.keys():
             for key in result[date_key].keys():
                 result[date_key][key] = self.get_weather_object(result[date_key][key])
+
+        self.logging("GET", "weather provider: got all period weather")
 
         return result
 

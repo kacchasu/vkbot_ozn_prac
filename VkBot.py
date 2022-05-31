@@ -496,6 +496,7 @@ class VkBot:
                                             Давление: {weatherObject.pressure} мм рт. ст., влажность: {weatherObject.humidity}%\n\
                                             Ветер: {weatherObject.wind_type}, {weatherObject.wind_speed} м/с, {weatherObject.direction}"
                             )
+                            self.logging("SENT", "sent current weather message")
                             break
                         elif event_c.text == "на сегодня":
                             today_weather_dict = weatherProvider.get_today_weather()
@@ -591,6 +592,7 @@ class VkBot:
                                             // Давление: {night.pressure} мм рт. ст., влажность: {night.humidity}%\n\
                                             // Ветер: {night.wind_type}, {night.wind_speed} м/с, {night.direction}"
                                 )
+                            self.logging("SENT", "sent today weather message")
                             break
                         elif event_c.text == "на завтра":
                             tomorrow_weather_dict = weatherProvider.get_tomorrow_weather()
@@ -686,6 +688,7 @@ class VkBot:
                                             // Давление: {night.pressure} мм рт. ст., влажность: {night.humidity}%\n\
                                             // Ветер: {night.wind_type}, {night.wind_speed} м/с, {night.direction}"
                                 )
+                            self.logging("SENT", "sent tomorrow weather message")
                             break
                         elif event_c.text == "на 5 дней":
                             all_preiod_weather_dict = weatherProvider.get_all_period_weather()
@@ -745,6 +748,7 @@ class VkBot:
                                 message=f"{string_day_to_send} ДЕНЬ\n\
                                         {string_night_to_send} НОЧЬ"
                             )
+                            self.logging("SENT", "sent all period weather message")
                             break
         # get teacher's schedule
         elif re.fullmatch("НАЙТИ " + r".+", message.upper()):
