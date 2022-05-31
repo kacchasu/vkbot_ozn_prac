@@ -62,7 +62,7 @@ class Schedule:
             for row in range(4, num_rows3):
                 temp = str(self.course3.cell(row=row, column=column).value)
                 if temp.find(self.teacher) > -1 and temp[temp.find(self.teacher) + len(self.teacher)] == " ":
-                    teachers.add(self.coursee.cell(row=row, column=column).value[
+                    teachers.add(self.course3.cell(row=row, column=column).value[
                                  temp.find(self.teacher):temp.find(self.teacher) + len(self.teacher) + 5])
 
         self.logging("CHECK", "schedule class object: surnames checked")
