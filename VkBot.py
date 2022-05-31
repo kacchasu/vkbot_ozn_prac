@@ -10,6 +10,7 @@ import datetime
 from vk_api.longpoll import VkLongPoll, VkEventType
 from Schedule import Schedule
 import shelve
+from Corona import Corona
 from WeatherProvider import WeatherProvider, WeatherObject
 import PIL.Image as Image
 
@@ -465,7 +466,6 @@ class VkBot:
 
         # get weather
         elif message.upper() == "ПОГОДА":
-            #TODO: weather
             self.set_keyboard_weather()
             weatherProvider = WeatherProvider()
             upload = VkUpload(vk_session)
@@ -887,11 +887,49 @@ class VkBot:
 
         # get covid for russia
         elif message.upper() == "КОРОНА":
-            TBD = True
+            corona = Corona("")
+            corona.get_russia_covid()
 
+            message = 'По состоянию на ' + corona.date + \
+                      '\nСлучаев: ' + corona.cases + ' (' + corona.new_cases + ' за сегодня)' + \
+                      '\nАктивных: ' + corona.active + ' (' + corona.new_active + ' за сегодня)' + \
+                      '\nВылечено: ' + corona.cured + ' (' + corona.new_cured + ' за сегодня)' + \
+                      '\nУмерло: ' + corona.died + ' (' + corona.new_died + ' за сегодня)'
+
+            corona.get_covid_stat()
+            upload = VkUpload(vk_session)
+            attachments = []
+            photo = upload.photo_messages(photos="corona.jpg")[0]
+            attachments.append("photo{}_{}".format(photo["owner_id"], photo["id"]))
+
+            vk.messages.send(
+                user_id=event.user_id,
+                attachment=','.join(attachments),
+                random_id=get_random_id(),
+                message=message
+            )
+            self.logging("SENT", "corona stat message")
         # get covid for any region
         elif re.fullmatch("КОРОНА " + r"[А-Я]+", message.upper()):
-            TBD = True
+            region = message[8:].lower()
+            corona = Corona(region)
+            if corona.get_corona_region() == -1:
+                message = "регион не найден"
+            else:
+                message = 'По состоянию на ' + corona.date + \
+                          '\nрегион: ' + corona.region + \
+                          '\nСлучаев: ' + corona.cases + ' (' + corona.new_cases + ' за сегодня)' + \
+                          '\nАктивных: ' + corona.active + ' (' + corona.new_active + ' за сегодня)' + \
+                          '\nВылечено: ' + corona.cured + ' (' + corona.new_cured + ' за сегодня)' + \
+                          '\nУмерло: ' + corona.died + ' (' + corona.new_died + ' за сегодня)'
+
+            vk.messages.send(
+                user_id=event.user_id,
+                random_id=get_random_id(),
+                message=message
+            )
+            self.logging("SENT", "corona stat message")
+
 
         # no such command
         else:
@@ -969,7 +1007,6 @@ class VkBot:
             keyboard.add_button(f"Найти {teacher}", color=VkKeyboardColor.PRIMARY)
             if teacher != teachers[-1]:
                 keyboard.add_line()
-
         vk.messages.send(
             keyboard=keyboard.get_keyboard(),
             user_id=event.user_id,
@@ -1016,14 +1053,6 @@ f = open("log.txt", 'w')
 f.close()
 f = shelve.open("groups.txt", 'c')
 f.close()
-
-#book1 = openpyxl.load_workbook("course1.xlsx")  # для первого запуска убрать
-#book2 = openpyxl.load_workbook("course2.xlsx")  # для первого запуска убрать
-#book3 = openpyxl.load_workbook("course3.xlsx")  # для первого запуска убрать
-course1 = None  # для первого запуска course1 = None
-course2 = None  # для первого запуска course2 = None
-course3 = None  # для первого запуска course3 = None
-
 
 get_schedule_files()
 book1 = openpyxl.load_workbook("course1.xlsx")
