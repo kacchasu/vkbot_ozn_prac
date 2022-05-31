@@ -134,7 +134,7 @@ class VkBot:
                                     )
                                     break
                                 elif event_c.text == "на завтра":
-                                    self.day = (self.day + 1) & 7
+                                    self.day = (self.day + 1) % 7
                                     if self.day == 6:
                                         vk.messages.send(
                                             user_id=event.user_id,
@@ -282,7 +282,7 @@ class VkBot:
                             )
                             break
                         elif event_c.text == "на завтра":
-                            self.day = (self.day + 1) & 7
+                            self.day = (self.day + 1) % 7
                             if self.day == 6:
                                 vk.messages.send(
                                     user_id=event.user_id,
@@ -749,7 +749,10 @@ class VkBot:
         # get teacher's schedule
         elif re.fullmatch("НАЙТИ " + r".+", message.upper()):
             schedule = Schedule("", message[6:].title(), course1, course2, course3)
-            tchrs = list(schedule.check_surnames())
+            if schedule.teacher[-1] == ".":
+                tchrs = [schedule.teacher]
+            else:
+                tchrs = list(schedule.check_surnames())
             if len(tchrs) > 1:
                 self.set_keyboard_surnames(tchrs)
             elif len(tchrs) == 1:
@@ -790,7 +793,7 @@ class VkBot:
                                 )
                                 break
                             elif event_c.text == "на завтра":
-                                self.day = (self.day + 1) & 7
+                                self.day = (self.day + 1) % 7
                                 if self.day == 6:
                                     vk.messages.send(
                                         user_id=event.user_id,
@@ -964,7 +967,9 @@ class VkBot:
         keyboard = VkKeyboard(one_time=True)
         for teacher in teachers:
             keyboard.add_button(f"Найти {teacher}", color=VkKeyboardColor.PRIMARY)
-            keyboard.add_line()
+            if teacher != teachers[-1]:
+                keyboard.add_line()
+
         vk.messages.send(
             keyboard=keyboard.get_keyboard(),
             user_id=event.user_id,
@@ -979,7 +984,7 @@ def get_schedule_files():
     schedule_soup = bs.BeautifulSoup(schedule_request.text, "html.parser")
     schedule_result = schedule_soup.find_all('div', id="toggle-hl_2_1-hl_3_3")
 
-    links = re.findall(r"https.+xlsx", str(schedule_result))
+    links = re.findall(r"https.+21-22_весна_очка.xlsx", str(schedule_result))
     with open('links.txt', 'r') as f:
         links_old = f.readlines()
 
@@ -987,7 +992,7 @@ def get_schedule_files():
     if len(links_old) < 3 or links_old[0] != links[0] + '\n' or links_old[1] != links[1] + '\n' and links_old[2] != \
             links[2] + '\n':
         links_f = open("links.txt", "w")
-        for list_n in range(len(links) - 1):
+        for list_n in range(len(links)):
             f = open(f"course{list_n + 1}.xlsx", "wb")
             resp = requests.get(links[list_n])
             links_f.write(links[list_n] + '\n')
@@ -1011,13 +1016,22 @@ f = open("log.txt", 'w')
 f.close()
 f = shelve.open("groups.txt", 'c')
 f.close()
+
 #book1 = openpyxl.load_workbook("course1.xlsx")  # для первого запуска убрать
 #book2 = openpyxl.load_workbook("course2.xlsx")  # для первого запуска убрать
 #book3 = openpyxl.load_workbook("course3.xlsx")  # для первого запуска убрать
 course1 = None  # для первого запуска course1 = None
 course2 = None  # для первого запуска course2 = None
 course3 = None  # для первого запуска course3 = None
+
+
 get_schedule_files()
+book1 = openpyxl.load_workbook("course1.xlsx")
+book2 = openpyxl.load_workbook("course2.xlsx")
+book3 = openpyxl.load_workbook("course3.xlsx")
+course1 = book1.active
+course2 = book2.active
+course3 = book3.active
 
 # Авторизуемся как сообщество
 vk_session = vk_api.VkApi(token=VK_API_TOKEN)
