@@ -4,14 +4,15 @@ import vk_api
 from vk_api import VkUpload
 from vk_api.keyboard import VkKeyboard, VkKeyboardColor
 from vk_api.utils import get_random_id
-import pandas as pd
 import openpyxl
 import re
 import datetime
 from vk_api.longpoll import VkLongPoll, VkEventType
 from Schedule import Schedule
-from WeatherProvider import WeatherProvider, WeatherObject
 import shelve
+from WeatherProvider import WeatherProvider, WeatherObject
+import PIL.Image as Image
+
 
 VK_API_TOKEN = '549032f8f34c3497616a86b50173efb07243d0910e25de0f5ae1212072292f46a76851ba7122662ffdd78'
 
@@ -478,7 +479,6 @@ class VkBot:
                         message = ''
                         if event_c.text == "сейчас":
                             weatherObject = weatherProvider.get_current_weather()
-                            image = open("icons/" + weatherObject.icon + ".png")
                             photo = upload.photo_messages(photos = "icons/" + weatherObject.icon + ".png")[0]
                             attachments.append("photo{}_{}".format(photo["owner_id"], photo["id"]))
 
@@ -486,15 +486,266 @@ class VkBot:
                                 user_id=event.user_id,
                                 attachment=','.join(attachments),
                                 random_id=get_random_id(),
+                                message="погода в москве"
+                            )
+
+                            vk.messages.send(
+                                user_id=event.user_id,
+                                random_id=get_random_id(),
                                 message=f"{weatherObject.description}, температура: {weatherObject.min_temp}-{weatherObject.max_temp}℃\n\
                                             Давление: {weatherObject.pressure} мм рт. ст., влажность: {weatherObject.humidity}%\n\
                                             Ветер: {weatherObject.wind_type}, {weatherObject.wind_speed} м/с, {weatherObject.direction}"
                             )
                             break
+                        elif event_c.text == "на сегодня":
+                            today_weather_dict = weatherProvider.get_today_weather()
+                            morning = today_weather_dict.get("morning", None)
+                            day = today_weather_dict.get("day", None)
+                            evening = today_weather_dict.get("evening", None)
+                            night = today_weather_dict.get("night", None)
 
+                            image_to_send = Image.new("RGBA", (400, 100))
+                            current_x_position = 0
+                            string_to_send = "/"
 
+                            if morning is not None:
+                                icon_to_insert = Image.open("icons/" + morning.icon + ".png")
+                                image_to_send.paste(icon_to_insert, (current_x_position, 0))
+                                icon_to_insert.close()
+                                current_x_position += 100
+                                string_to_send += "\t" + str((morning.max_temp + morning.min_temp) // 2) + "℃ //"
 
+                            if day is not None:
+                                icon_to_insert = Image.open("icons/" + day.icon + ".png")
+                                image_to_send.paste(icon_to_insert, (current_x_position, 0))
+                                icon_to_insert.close()
+                                current_x_position += 100
+                                string_to_send += "\t" + str((day.max_temp + day.min_temp) // 2) + "℃ //"
 
+                            if evening is not None:
+                                icon_to_insert = Image.open("icons/" + evening.icon + ".png")
+                                image_to_send.paste(icon_to_insert, (current_x_position, 0))
+                                icon_to_insert.close()
+                                current_x_position += 100
+                                string_to_send += "\t" + str((evening.max_temp + evening.min_temp) // 2) + "℃ //"
+
+                            if night is not None:
+                                icon_to_insert = Image.open("icons/" + night.icon + ".png")
+                                image_to_send.paste(icon_to_insert, (current_x_position, 0))
+                                icon_to_insert.close()
+                                current_x_position += 100
+                                string_to_send += "\t" + str((night.max_temp + night.min_temp) // 2) + "℃ /"
+
+                            image_to_send.save("tmp_icon.png")
+                            photo = upload.photo_messages(photos="tmp_icon.png")[0]
+                            attachments.append("photo{}_{}".format(photo["owner_id"], photo["id"]))
+
+                            vk.messages.send(
+                                user_id=event.user_id,
+                                attachment=','.join(attachments),
+                                random_id=get_random_id(),
+                                message="погода в москве на сегодня"
+                            )
+                            vk.messages.send(
+                                user_id=event.user_id,
+                                random_id=get_random_id(),
+                                message=string_to_send
+                            )
+
+                            if morning is not None:
+                                vk.messages.send(
+                                    user_id=event.user_id,
+                                    random_id=get_random_id(),
+                                    message=f"УТРО\n\
+                                            // {morning.description}, температура: {morning.min_temp}-{morning.max_temp}℃\n\
+                                            // Давление: {morning.pressure} мм рт. ст., влажность: {morning.humidity}%\n\
+                                            // Ветер: {morning.wind_type}, {morning.wind_speed} м/с, {morning.direction}"
+                                )
+
+                            if day is not None:
+                                vk.messages.send(
+                                    user_id=event.user_id,
+                                    random_id=get_random_id(),
+                                    message=f"ДЕНЬ\n\
+                                            // {day.description}, температура: {day.min_temp}-{day.max_temp}℃\n\
+                                            // Давление: {day.pressure} мм рт. ст., влажность: {day.humidity}%\n\
+                                            // Ветер: {day.wind_type}, {day.wind_speed} м/с, {day.direction}"
+                                )
+
+                            if evening is not None:
+                                vk.messages.send(
+                                    user_id=event.user_id,
+                                    random_id=get_random_id(),
+                                    message=f"ВЕЧЕР\n\
+                                            // {evening.description}, температура: {evening.min_temp}-{evening.max_temp}℃\n\
+                                            // Давление: {evening.pressure} мм рт. ст., влажность: {evening.humidity}%\n\
+                                            // Ветер: {evening.wind_type}, {evening.wind_speed} м/с, {evening.direction}"
+                                )
+
+                            if night is not None:
+                                vk.messages.send(
+                                    user_id=event.user_id,
+                                    random_id=get_random_id(),
+                                    message=f"НОЧЬ\n\
+                                            // {night.description}, температура: {night.min_temp}-{night.max_temp}℃\n\
+                                            // Давление: {night.pressure} мм рт. ст., влажность: {night.humidity}%\n\
+                                            // Ветер: {night.wind_type}, {night.wind_speed} м/с, {night.direction}"
+                                )
+                            break
+                        elif event_c.text == "на завтра":
+                            tomorrow_weather_dict = weatherProvider.get_tomorrow_weather()
+                            morning = tomorrow_weather_dict.get("morning", None)
+                            day = tomorrow_weather_dict.get("day", None)
+                            evening = tomorrow_weather_dict.get("evening", None)
+                            night = tomorrow_weather_dict.get("night", None)
+
+                            image_to_send = Image.new("RGBA", (400, 100))
+                            current_x_position = 0
+                            string_to_send = "/"
+
+                            if morning is not None:
+                                icon_to_insert = Image.open("icons/" + morning.icon + ".png")
+                                image_to_send.paste(icon_to_insert, (current_x_position, 0))
+                                icon_to_insert.close()
+                                current_x_position += 100
+                                string_to_send += "\t" + str((morning.max_temp + morning.min_temp) // 2) + "℃ //"
+
+                            if day is not None:
+                                icon_to_insert = Image.open("icons/" + day.icon + ".png")
+                                image_to_send.paste(icon_to_insert, (current_x_position, 0))
+                                icon_to_insert.close()
+                                current_x_position += 100
+                                string_to_send += "\t" + str((day.max_temp + day.min_temp) // 2) + "℃ //"
+
+                            if evening is not None:
+                                icon_to_insert = Image.open("icons/" + evening.icon + ".png")
+                                image_to_send.paste(icon_to_insert, (current_x_position, 0))
+                                icon_to_insert.close()
+                                current_x_position += 100
+                                string_to_send += "\t" + str((evening.max_temp + evening.min_temp) // 2) + "℃ //"
+
+                            if night is not None:
+                                icon_to_insert = Image.open("icons/" + night.icon + ".png")
+                                image_to_send.paste(icon_to_insert, (current_x_position, 0))
+                                icon_to_insert.close()
+                                current_x_position += 100
+                                string_to_send += "\t" + str((night.max_temp + night.min_temp) // 2) + "℃ /"
+
+                            image_to_send.save("tmp_icon.png")
+                            photo = upload.photo_messages(photos="tmp_icon.png")[0]
+                            attachments.append("photo{}_{}".format(photo["owner_id"], photo["id"]))
+
+                            vk.messages.send(
+                                user_id=event.user_id,
+                                attachment=','.join(attachments),
+                                random_id=get_random_id(),
+                                message="погода в москве на завтра"
+                            )
+                            vk.messages.send(
+                                user_id=event.user_id,
+                                random_id=get_random_id(),
+                                message=string_to_send
+                            )
+
+                            if morning is not None:
+                                vk.messages.send(
+                                    user_id=event.user_id,
+                                    random_id=get_random_id(),
+                                    message=f"УТРО\n\
+                                            // {morning.description}, температура: {morning.min_temp}-{morning.max_temp}℃\n\
+                                            // Давление: {morning.pressure} мм рт. ст., влажность: {morning.humidity}%\n\
+                                            // Ветер: {morning.wind_type}, {morning.wind_speed} м/с, {morning.direction}"
+                                )
+
+                            if day is not None:
+                                vk.messages.send(
+                                    user_id=event.user_id,
+                                    random_id=get_random_id(),
+                                    message=f"ДЕНЬ\n\
+                                            // {day.description}, температура: {day.min_temp}-{day.max_temp}℃\n\
+                                            // Давление: {day.pressure} мм рт. ст., влажность: {day.humidity}%\n\
+                                            // Ветер: {day.wind_type}, {day.wind_speed} м/с, {day.direction}"
+                                )
+
+                            if evening is not None:
+                                vk.messages.send(
+                                    user_id=event.user_id,
+                                    random_id=get_random_id(),
+                                    message=f"ВЕЧЕР\n\
+                                            // {evening.description}, температура: {evening.min_temp}-{evening.max_temp}℃\n\
+                                            // Давление: {evening.pressure} мм рт. ст., влажность: {evening.humidity}%\n\
+                                            // Ветер: {evening.wind_type}, {evening.wind_speed} м/с, {evening.direction}"
+                                )
+
+                            if night is not None:
+                                vk.messages.send(
+                                    user_id=event.user_id,
+                                    random_id=get_random_id(),
+                                    message=f"НОЧЬ\n\
+                                            // {night.description}, температура: {night.min_temp}-{night.max_temp}℃\n\
+                                            // Давление: {night.pressure} мм рт. ст., влажность: {night.humidity}%\n\
+                                            // Ветер: {night.wind_type}, {night.wind_speed} м/с, {night.direction}"
+                                )
+                            break
+                        elif event_c.text == "на 5 дней":
+                            all_preiod_weather_dict = weatherProvider.get_all_period_weather()
+                            image_to_send = Image.new("RGBA", (500, 100))
+                            current_x_position = 0
+                            string_day_to_send = ""
+                            string_night_to_send = ""
+                            string_period_to_send = "погода в москве с "
+
+                            current_period_number = 0
+                            for key in sorted(all_preiod_weather_dict.keys()):
+                                if current_period_number == 0:
+                                    string_period_to_send += key.strftime("%d.%m") + " по "
+                                elif current_period_number == 4:
+                                    string_period_to_send += key.strftime("%d.%m")
+                                elif current_period_number > 4:
+                                    break
+
+                                current_day_weather_dict = all_preiod_weather_dict[key]
+                                current_weather_day = current_day_weather_dict.get("day", None)
+                                current_weather_night = current_day_weather_dict.get("night", None)
+
+                                if current_weather_day:
+                                    string_day_to_send += f"/ {(current_weather_day.min_temp + current_weather_day.max_temp) // 2}℃ /"
+                                else:
+                                    string_day_to_send += "/ -- /"
+
+                                if current_weather_night:
+                                    string_night_to_send += f"/ {(current_weather_night.min_temp + current_weather_night.max_temp) // 2}℃ /"
+                                else:
+                                    string_night_to_send += "/ -- /"
+
+                                if current_weather_day:
+                                    icon_to_insert = Image.open("icons/" + current_weather_day.icon + ".png")
+                                    image_to_send.paste(icon_to_insert, (current_period_number * 100, 0))
+                                    icon_to_insert.close()
+                                else: # if day's icon is not defined we'll use evening one
+                                    icon_to_insert = Image.open("icons/" + current_day_weather_dict["evening"].icon + ".png")
+                                    image_to_send.paste(icon_to_insert, (current_period_number * 100, 0))
+                                    icon_to_insert.close()
+
+                                current_period_number += 1
+
+                            image_to_send.save("tmp_icon.png")
+                            photo = upload.photo_messages(photos="tmp_icon.png")[0]
+                            attachments.append("photo{}_{}".format(photo["owner_id"], photo["id"]))
+
+                            vk.messages.send(
+                                user_id=event.user_id,
+                                attachment=','.join(attachments),
+                                random_id=get_random_id(),
+                                message=string_period_to_send
+                            )
+                            vk.messages.send(
+                                user_id=event.user_id,
+                                random_id=get_random_id(),
+                                message=f"{string_day_to_send} ДЕНЬ\n\
+                                        {string_night_to_send} НОЧЬ"
+                            )
+                            break
         # get teacher's schedule
         elif re.fullmatch("НАЙТИ " + r".+", message.upper()):
             schedule = Schedule("", message[6:].title(), course1, course2, course3)

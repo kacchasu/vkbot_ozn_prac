@@ -1,7 +1,15 @@
 import urllib.request
 import json
+from datetime import datetime, timedelta, date
+
+# morning (5:00-10:00) day (10:00-18:00) evening (18:00-23:00) night (23:00-5:00)
 
 WEATHER_API_KEY = 'cdc771db22a8186cf104788e3b17d693'
+
+START_MORNING_HOUR = 3
+START_DAY_HOUR = 11
+START_EVENING_HOUR = 15
+START_NIGHT_HOUR = 21
 
 '''
     Ясное небо, температура: 16-18 C
@@ -137,7 +145,7 @@ class WeatherProvider:
             f"http://api.openweathermap.org/data/2.5/weather?q=moscow&appid={WEATHER_API_KEY}&units=metric").read()
         json_object = json.loads(response)
 
-        json_weather = json_object.get("weather")[0] # choose the first option of description
+        json_weather = json_object.get("weather")[0]  # choose the first option of description
         json_main = json_object.get("main")
         json_wind = json_object.get("wind")
 
@@ -155,7 +163,7 @@ class WeatherProvider:
     def get_weather_object(self, json_response):
         json_object = json_response
 
-        json_weather = json_object.get("weather")[0] # choose the first option of description
+        json_weather = json_object.get("weather")[0]  # choose the first option of description
         json_main = json_object.get("main")
         json_wind = json_object.get("wind")
 
@@ -170,18 +178,91 @@ class WeatherProvider:
 
         return result
 
-    # today: morning (
+    # morning (5:00-10:00) day (10:00-18:00) evening (18:00-23:00) night (23:00-5:00)
 
     def get_today_weather(self):
         response = urllib.request.urlopen(
             f"http://api.openweathermap.org/data/2.5/forecast?q=moscow&appid={WEATHER_API_KEY}&units=metric").read()
         json_list = json.loads(response).get("list")
+        result = dict()
+        today_day = datetime.today().day
 
-        return self.get_weather_object(json_list[0])
+        for period in json_list:
+            period_datetime = datetime.fromtimestamp(period.get("dt"))
 
-    def get_today_weather(self):
+            if period_datetime.day != today_day:
+                break
+
+            if START_MORNING_HOUR <= period_datetime.hour < START_DAY_HOUR:
+                result["morning"] = period
+            elif START_DAY_HOUR <= period_datetime.hour < START_EVENING_HOUR:
+                result["day"] = period
+            elif START_EVENING_HOUR <= period_datetime.hour < START_NIGHT_HOUR:
+                result["evening"] = period
+            elif START_NIGHT_HOUR <= period_datetime.hour:
+                result["night"] = period
+
+        for key in result.keys():
+            result[key] = self.get_weather_object(result[key])
+
+        return result
+
+    def get_tomorrow_weather(self):
         response = urllib.request.urlopen(
             f"http://api.openweathermap.org/data/2.5/forecast?q=moscow&appid={WEATHER_API_KEY}&units=metric").read()
         json_list = json.loads(response).get("list")
+        result = dict()
+        tomorrow_start = (datetime.today() + timedelta(days=1)).replace(hour=0, minute=0, second=0, microsecond=0)
+        tomorrow_end = tomorrow_start + timedelta(days=1)
 
-        return self.get_weather_object(json_list[0])
+        for period in json_list:
+            period_datetime = datetime.fromtimestamp(period.get("dt"))
+
+            if period_datetime < tomorrow_start:
+                continue # not found yet
+
+            if period_datetime >= tomorrow_end:
+                break # if we are trying to look at the day that's after tomorrow
+
+            if START_MORNING_HOUR <= period_datetime.hour < START_DAY_HOUR:
+                result["morning"] = period
+            elif START_DAY_HOUR <= period_datetime.hour < START_EVENING_HOUR:
+                result["day"] = period
+            elif START_EVENING_HOUR <= period_datetime.hour < START_NIGHT_HOUR:
+                result["evening"] = period
+            elif START_NIGHT_HOUR <= period_datetime.hour:
+                result["night"] = period
+
+        for key in result.keys():
+            result[key] = self.get_weather_object(result[key])
+
+        return result
+
+    def get_all_period_weather(self):
+        response = urllib.request.urlopen(
+            f"http://api.openweathermap.org/data/2.5/forecast?q=moscow&appid={WEATHER_API_KEY}&units=metric").read()
+        json_list = json.loads(response).get("list")
+        result = dict() # it's a DATES dict
+
+        for period in json_list:
+            period_datetime = datetime.fromtimestamp(period.get("dt"))
+
+            if period_datetime.date() not in result:
+                result[period_datetime.date()] = dict() # it's a PERIODS dict
+
+            if START_MORNING_HOUR <= period_datetime.hour < START_DAY_HOUR:
+                result[period_datetime.date()]["morning"] = period
+            elif START_DAY_HOUR <= period_datetime.hour < START_EVENING_HOUR:
+                result[period_datetime.date()]["day"] = period
+            elif START_EVENING_HOUR <= period_datetime.hour < START_NIGHT_HOUR:
+                result[period_datetime.date()]["evening"] = period
+            elif START_NIGHT_HOUR <= period_datetime.hour:
+                result[period_datetime.date()]["night"] = period
+
+        for date_key in result.keys():
+            for key in result[date_key].keys():
+                result[date_key][key] = self.get_weather_object(result[date_key][key])
+
+        return result
+
+
