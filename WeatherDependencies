@@ -1,0 +1,2 @@
+pip install Pillow
+Получить свой API_KEY на openweathermap.org и вставить его в WEATHER_API_KEY
